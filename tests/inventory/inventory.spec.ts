@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures/auth.fixture';
 import { InventoryPage } from '../../pages/InventoryPage';
+import { products } from '../../test-data/products';
 
 test.describe('Inventory', () => {
 
@@ -44,15 +45,15 @@ test.describe('Inventory', () => {
 
   test('adding a product increments the cart badge', async ({ authenticatedPage }) => {
     const inventoryPage = new InventoryPage(authenticatedPage);
-    await inventoryPage.addToCart('Sauce Labs Backpack');
+    await inventoryPage.addToCart(products.backpack.name);
     const count = await inventoryPage.getCartCount();
     expect(count).toBe(1);
   });
 
   test('adding multiple products shows correct cart count', async ({ authenticatedPage }) => {
     const inventoryPage = new InventoryPage(authenticatedPage);
-    await inventoryPage.addToCart('Sauce Labs Backpack');
-    await inventoryPage.addToCart('Sauce Labs Bike Light');
+    await inventoryPage.addToCart(products.backpack.name);
+    await inventoryPage.addToCart(products.bikeLight.name);
     const count = await inventoryPage.getCartCount();
     expect(count).toBe(2);
   });
