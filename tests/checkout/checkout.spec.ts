@@ -9,15 +9,46 @@ test.describe('Checkout', () => {
   test.beforeEach(async ({ authenticatedPage }) => {
     const inventoryPage = new InventoryPage(authenticatedPage);
     await inventoryPage.addToCart(products.backpack.name);
+    await inventoryPage.addToCart(products.bikeLight.name);
     await inventoryPage.cartLink.click();
     await expect(authenticatedPage).toHaveURL(/cart/);
     const cartPage = new CartPage(authenticatedPage);
     await cartPage.checkoutButton.click();
     await expect(authenticatedPage).toHaveURL(/checkout-step-one/);
   });
-  // Full end to end flow
-  test.skip('successful checkout with valid customer information', async ({ authenticatedPage }) => {
 
+  // Full end to end flow
+  test('successful checkout with valid customer information', async ({ authenticatedPage }) => {
+    // Step 1
+    const checkoutPage = new CheckoutPage(authenticatedPage);
+    await expect(checkoutPage.pageTitle).toHaveText('Checkout: Your Information');
+    await checkoutPage.fillForm('firstName', 'lastName', 'postalCode');
+
+    // Step 2
+    await expect(authenticatedPage).toHaveURL(/checkout-step-two/);
+    await expect(checkoutPage.pageTitle).toHaveText('Checkout: Overview');
+    const names = await checkoutPage.getOverviewItemNames();
+    expect(names).toContain(products.backpack.name);
+    const backpackPrice = await checkoutPage.getItemPrice(products.backpack.name);
+    expect(backpackPrice).toBe(products.backpack.price);
+    const bikePrice = await checkoutPage.getItemPrice(products.bikeLight.name);
+    expect(bikePrice).toBe(products.bikeLight.price);
+    const backpackDesc = await checkoutPage.getItemDescription(products.backpack.name);
+    expect(backpackDesc).toBe(products.backpack.description);
+    const bikeDesc = await checkoutPage.getItemDescription(products.bikeLight.name);
+    expect(bikeDesc).toBe(products.bikeLight.description);
+
+    const prices = await checkoutPage.getOverviewItemPrices();
+    const numbers = prices.map(p => parseFloat(p.replace(/[^0-9.]/g, '')));
+    const total = numbers.reduce((acc, cur) => acc + cur, 0);
+    const subTotalNum = await checkoutPage.getSubtotalNumber();
+    expect(total).toBeCloseTo(subTotalNum, 2);
+    await checkoutPage.finishButton.click();
+
+    // Confirmation
+    await expect(authenticatedPage).toHaveURL(/checkout-complete/);
+    await expect(checkoutPage.pageTitle).toHaveText('Checkout: Complete!');
+    await expect(checkoutPage.confirmationMessage).toHaveText('Thank you for your order!');
   });
 
   // Step 1
@@ -80,24 +111,27 @@ test.describe('Checkout', () => {
 
     test('item prices match what was added to cart', async ({ authenticatedPage }) => {
       const checkoutPage = new CheckoutPage(authenticatedPage);
-      const prices = await checkoutPage.getOverviewItemPrices();
-      expect(prices).toContain(products.backpack.price);
+      const backpackPrice = await checkoutPage.getItemPrice(products.backpack.name);
+      expect(backpackPrice).toBe(products.backpack.price);
+      const bikePrice = await checkoutPage.getItemPrice(products.bikeLight.name);
+      expect(bikePrice).toBe(products.bikeLight.price);
     });
 
-    test.skip('item descriptions match what was added to cart', async ({ authenticatedPage }) => {
+    test('item descriptions match what was added to cart', async ({ authenticatedPage }) => {
       const checkoutPage = new CheckoutPage(authenticatedPage);
-      const descriptions = await checkoutPage.getOverviewItemDescriptions();
-      expect(descriptions).toContain(products.backpack.description);
+      const backpackDesc = await checkoutPage.getItemDescription(products.backpack.name);
+      expect(backpackDesc).toBe(products.backpack.description);
+      const bikeDesc = await checkoutPage.getItemDescription(products.bikeLight.name);
+      expect(bikeDesc).toBe(products.bikeLight.description);
     });
 
     test('subtotal matches sum of item prices', async ({ authenticatedPage }) => {
       const checkoutPage = new CheckoutPage(authenticatedPage);
       const prices = await checkoutPage.getOverviewItemPrices();
-      const numbers = prices.map(p => parseFloat(p.replace('$', '')));
+      const numbers = prices.map(p => parseFloat(p.replace(/[^0-9.]/g, '')));
       const total = numbers.reduce((acc, cur) => acc + cur, 0);
 
-      const subTotalTxt = await checkoutPage.overviewSubtotal.textContent() ?? '0';
-      const subTotalNum = parseFloat(subTotalTxt.replace(/[^0-9.]/g, ''));
+      const subTotalNum = await checkoutPage.getSubtotalNumber();
       expect(total).toBeCloseTo(subTotalNum, 2);
     });
 
@@ -115,6 +149,7 @@ test.describe('Checkout', () => {
 
   });
 
+  // Confirmation
   test.describe('Confirmation', () => {
     test.beforeEach(async ({ authenticatedPage }) => {
       const checkoutPage = new CheckoutPage(authenticatedPage);
@@ -124,7 +159,6 @@ test.describe('Checkout', () => {
       await expect(authenticatedPage).toHaveURL(/checkout-complete/);
     });
 
-    // Confirmation
     test('page title displays \'Checkout: Complete!\'', async ({ authenticatedPage }) => {
       const checkoutPage = new CheckoutPage(authenticatedPage);
       await expect(checkoutPage.pageTitle).toHaveText('Checkout: Complete!');

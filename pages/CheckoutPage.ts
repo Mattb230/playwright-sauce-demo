@@ -15,10 +15,10 @@ export class CheckoutPage {
   readonly errorMessage: Locator;
 
   // Step Two
+  readonly overviewItemList: Locator;
   readonly overviewItemName: Locator;
   readonly overviewItemDescription: Locator;
   readonly overviewItemPrice: Locator;
-
   readonly overviewSubtotal: Locator;
   readonly overviewTax: Locator;
   readonly overviewTotal: Locator;
@@ -43,6 +43,7 @@ export class CheckoutPage {
     this.errorMessage = page.locator('[data-test="error"]');
 
     // Step Two
+    this.overviewItemList = page.locator('[data-test="cart-list"]');
     this.overviewItemName = page.locator('[data-test="inventory-item-name"]');
     this.overviewItemDescription = page.locator('[data-test="inventory-item-desc"]');
     this.overviewItemPrice = page.locator('[data-test="inventory-item-price"]');
@@ -65,6 +66,29 @@ export class CheckoutPage {
   }
 
   // Step 2
+  async getItemPrice(productName: string): Promise<string> {
+    const price = await this.overviewItemList
+      .locator('[data-test="inventory-item"]')
+      .filter({ hasText: productName })
+      .locator('[data-test="inventory-item-price"]')
+      .textContent();
+    return price ?? '0';
+  }
+
+  async getItemDescription(productName: string): Promise<string> {
+    const desc = await this.overviewItemList
+      .locator('[data-test="inventory-item"]')
+      .filter({ hasText: productName })
+      .locator('[data-test="inventory-item-desc"]')
+      .textContent();
+    return desc ?? '0';
+  }
+
+  async getSubtotalNumber(): Promise<number> {
+    const subTotalTxt = await this.overviewSubtotal.textContent() ?? '0';
+    return parseFloat(subTotalTxt.replace(/[^0-9.]/g, ''));
+  }
+
   async getOverviewItemNames(): Promise<string[]> {
     return this.overviewItemName.allTextContents();
   }

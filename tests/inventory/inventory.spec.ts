@@ -29,7 +29,7 @@ test.describe('Inventory', () => {
     const inventoryPage = new InventoryPage(authenticatedPage);
     await inventoryPage.sortBy('lohi');
     const prices = await inventoryPage.getProductPrices();
-    const numbers = prices.map(p => parseFloat(p.replace('$', '')));
+    const numbers = prices.map(p => parseFloat(p.replace(/[^0-9.]/g, '')));
     const sorted = [...numbers].sort((a, b) => a - b);
     expect(numbers).toEqual(sorted);
   });
@@ -38,7 +38,7 @@ test.describe('Inventory', () => {
     const inventoryPage = new InventoryPage(authenticatedPage);
     await inventoryPage.sortBy('hilo');
     const prices = await inventoryPage.getProductPrices();
-    const numbers = prices.map(p => parseFloat(p.replace('$', '')));
+    const numbers = prices.map(p => parseFloat(p.replace(/[^0-9.]/g, '')));
     const sorted = [...numbers].sort((a, b) => b - a);
     expect(numbers).toEqual(sorted);
   });
