@@ -4,6 +4,8 @@
 
 An end-to-end UI test suite for [SauceDemo](https://www.saucedemo.com), built with Playwright and TypeScript using the Page Object Model. The suite covers authentication, the inventory page, and the full checkout flow — with assertions that verify data integrity as it moves across pages, not just that pages load.
 
+26 tests run across three browser engines (Chromium, Firefox, and WebKit) on every push and pull request via GitHub Actions.
+
 **Stack:** TypeScript · Playwright · Page Object Model · GitHub Actions
 
 ---
@@ -20,14 +22,16 @@ An end-to-end UI test suite for [SauceDemo](https://www.saucedemo.com), built wi
 ├── fixtures/
 │   └── auth.fixture.ts             # provides an `authenticatedPage` — tests start logged in
 ├── test-data/
-│   ├── users.ts                    # standard and locked-out accounts
+│   ├── users.ts                    # standard, locked-out, and problem accounts
 │   └── products.ts                 # product names, prices, and descriptions
 ├── tests/
-│   ├── auth/login.spec.ts          # login happy path + locked-out negative
-│   ├── inventory/inventory.spec.ts # product display, sorting, cart badge
-│   └── checkout/checkout.spec.ts   # full E2E flow, form validation, data integrity
+│   ├── auth/login.spec.ts                      # login happy path + locked-out negative
+│   ├── inventory/inventory.spec.ts             # product display, sorting, cart badge
+│   ├── checkout/checkout.spec.ts               # full E2E flow, form validation, data integrity
+│   └── checkout/checkout-edge-cases.spec.ts    # documented known issues (skipped, with rationale)
 ├── .github/workflows/playwright.yml
 ├── playwright.config.ts
+├── tsconfig.json
 └── package.json
 ```
 
@@ -63,12 +67,17 @@ npx playwright test tests/checkout/checkout.spec.ts
 # Run one folder
 npx playwright test tests/inventory
 
+# Run against a single browser
+npx playwright test --project=chromium
+
 # Watch the browser (headed)
 npx playwright test --headed
 
 # Debug interactively
 npx playwright test --ui
 ```
+
+By default the suite runs against all three configured engines — Chromium, Firefox, and WebKit (Desktop Safari) — so the same checks are verified cross-browser.
 
 ---
 
@@ -91,6 +100,7 @@ In CI, the same report is uploaded as a build artifact (`playwright-report`, ret
 - **Checkout — full end-to-end flow** — add items, move through the cart, complete the customer-information form, review the overview, finish, and reach the confirmation page, asserting the expected URL and page title at each step.
 - **Data integrity at the overview step** — item names, prices, and descriptions on the order overview match the expected product data, and the displayed subtotal equals the sum of the line items. This is the core check that data isn't dropped or altered between pages.
 - **Form validation** — missing first name, last name, and postal code each surface the correct error message; cancel returns to the cart or inventory as appropriate.
+- **Documented known issues** — `checkout-edge-cases.spec.ts` holds skipped tests describing application behaviour that diverges from expectation (e.g. SauceDemo allows checkout with an empty cart). Each captures the expected vs. actual behaviour so the gap is tracked rather than silently ignored.
 
 ---
 
