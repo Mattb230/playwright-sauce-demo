@@ -1,20 +1,8 @@
-<!--
-  DRAFT README — review the items marked "CONFIRM" before committing.
-  These are details I couldn't verify against the live repo (GitHub API was
-  rate-limited), so reconcile them against your actual files:
-    1. The CI badge workflow filename (line below the title).
-    2. The exact file names under tests/ and fixtures/ in the structure tree.
-    3. The "Known Defect Found" section — keep it ONLY if you actually encoded
-       a SauceDemo bug as a test; otherwise delete that whole section.
-  Delete this comment block when you're done.
--->
-
 # Playwright SauceDemo E2E Suite
 
-<!-- CONFIRM workflow filename, then this badge goes live -->
-[![CI](https://github.com/Mattb230/playwright-sauce-demo/actions/workflows/CONFIRM-WORKFLOW-FILE.yml/badge.svg)](https://github.com/Mattb230/playwright-sauce-demo/actions)
+[![Playwright Tests](https://github.com/Mattb230/playwright-sauce-demo/actions/workflows/playwright.yml/badge.svg)](https://github.com/Mattb230/playwright-sauce-demo/actions/workflows/playwright.yml)
 
-An end-to-end UI test suite for [SauceDemo](https://www.saucedemo.com), built with Playwright and TypeScript using the Page Object Model. The suite covers the full purchase flow — login, inventory, cart, and checkout — with assertions that verify data integrity as it moves across pages, not just that pages load.
+An end-to-end UI test suite for [SauceDemo](https://www.saucedemo.com), built with Playwright and TypeScript using the Page Object Model. The suite covers authentication, the inventory page, and the full checkout flow — with assertions that verify data integrity as it moves across pages, not just that pages load.
 
 **Stack:** TypeScript · Playwright · Page Object Model · GitHub Actions
 
@@ -22,22 +10,23 @@ An end-to-end UI test suite for [SauceDemo](https://www.saucedemo.com), built wi
 
 ## Project Structure
 
-<!-- CONFIRM the exact file names under tests/ and fixtures/ -->
 ```
 .
-├── pages/                  # Page Objects — one class per screen
-│   ├── LoginPage.ts        #   login form interactions and submission
-│   ├── InventoryPage.ts    #   product list, add-to-cart, getItemPrice() lookup
-│   ├── CartPage.ts         #   cart contents and line-item verification
-│   └── CheckoutPage.ts     #   checkout steps, totals, and order completion
-├── fixtures/               # Custom Playwright fixtures
-│   └── auth.fixture.ts     #   authenticated fixture — tests start logged in
-├── test-data/              # Test data, decoupled from test logic
-│   ├── users.ts            #   SauceDemo user accounts
-│   └── products.ts         #   product names and expected prices
-├── tests/                  # Spec files
-│   └── checkout.spec.ts    #   full E2E purchase flow with data-integrity checks
-├── .github/workflows/      # CI — runs the suite on push
+├── pages/                          # Page Objects — one class per screen
+│   ├── LoginPage.ts
+│   ├── InventoryPage.ts
+│   ├── CartPage.ts
+│   └── CheckoutPage.ts
+├── fixtures/
+│   └── auth.fixture.ts             # provides an `authenticatedPage` — tests start logged in
+├── test-data/
+│   ├── users.ts                    # standard and locked-out accounts
+│   └── products.ts                 # product names, prices, and descriptions
+├── tests/
+│   ├── auth/login.spec.ts          # login happy path + locked-out negative
+│   ├── inventory/inventory.spec.ts # product display, sorting, cart badge
+│   └── checkout/checkout.spec.ts   # full E2E flow, form validation, data integrity
+├── .github/workflows/playwright.yml
 ├── playwright.config.ts
 └── package.json
 ```
@@ -68,14 +57,17 @@ npx playwright install   # downloads the browser binaries
 # Run the full suite (headless)
 npx playwright test
 
-# Run with the UI mode for debugging
-npx playwright test --ui
-
 # Run a single spec
-npx playwright test tests/checkout.spec.ts
+npx playwright test tests/checkout/checkout.spec.ts
 
-# Run in headed mode to watch the browser
+# Run one folder
+npx playwright test tests/inventory
+
+# Watch the browser (headed)
 npx playwright test --headed
+
+# Debug interactively
+npx playwright test --ui
 ```
 
 ---
@@ -88,45 +80,30 @@ Playwright generates an HTML report after each run. Open the most recent one wit
 npx playwright show-report
 ```
 
-<!-- Optional but recommended: add a screenshot of the HTML report here.
-     Save it under docs/ and reference it like:
-     ![Playwright HTML report](docs/report.png) -->
+In CI, the same report is uploaded as a build artifact (`playwright-report`, retained 30 days), so a failed run on GitHub can be downloaded and inspected locally.
 
 ---
 
 ## Test Coverage
 
-- **End-to-end checkout** — a complete purchase from login through order confirmation.
-- **Data integrity across pages** — verifies that a product's price on the inventory page is the same price shown in the cart and reflected in the checkout total, catching regressions where data is dropped or transformed between steps.
-- **Cart accuracy** — confirms the items added on the inventory page match exactly what appears in the cart.
-
-<!-- CONFIRM / EDIT: add or remove rows above to match your actual specs. -->
-
----
-
-## Known Defect Found
-
-<!--
-  KEEP THIS SECTION ONLY IF TRUE. SauceDemo ships intentional bugs (e.g. the
-  problem_user account renders broken images, certain users hit sort/checkout
-  issues). If you encoded one as a test, describe it here — it's one of the
-  strongest signals in the whole repo. If you did NOT, delete this section.
--->
-
-While building the suite I encountered a defect in the application under test: _[describe the behaviour — what you expected, what SauceDemo actually did, and which user/flow triggers it]_. It's captured in `[spec file]` as a documented test so the regression is tracked rather than worked around.
+- **Authentication** — a standard user logs in and lands on the inventory page; a locked-out user is blocked and shown the error message.
+- **Inventory** — products render; all four sort orders (name A–Z and Z–A, price low–high and high–low) are verified by reading the displayed list and asserting it matches a programmatically sorted copy; the cart badge increments correctly as items are added.
+- **Checkout — full end-to-end flow** — add items, move through the cart, complete the customer-information form, review the overview, finish, and reach the confirmation page, asserting the expected URL and page title at each step.
+- **Data integrity at the overview step** — item names, prices, and descriptions on the order overview match the expected product data, and the displayed subtotal equals the sum of the line items. This is the core check that data isn't dropped or altered between pages.
+- **Form validation** — missing first name, last name, and postal code each surface the correct error message; cancel returns to the cart or inventory as appropriate.
 
 ---
 
 ## Design Notes
 
-- **Page Object Model.** Each screen is a class that owns its locators and exposes intent-level methods (e.g. `addItemToCart`, `checkout`). Specs read as user actions, and a UI change touches one Page Object instead of every test.
-- **`data-test` selectors as the primary strategy.** SauceDemo exposes `data-test` attributes specifically for automation. Selecting on those instead of CSS classes or text keeps the suite stable against styling and copy changes — the locators break only when behaviour actually changes.
-- **Authenticated fixture.** A custom fixture handles login once and hands tests an already-authenticated context, so specs that aren't testing login don't repeat it. This keeps tests focused and faster.
-- **Scoped price lookup (`getItemPrice`).** `InventoryPage.getItemPrice(productName)` scopes a locator to a single product row, which is what makes the cross-page price-integrity assertions possible.
-- **Test data separated from logic.** User accounts and product data live in `test-data/`, so the same specs can run against different data without editing test code.
+- **Page Object Model.** Each screen is a class that owns its locators and exposes intent-level methods (`login`, `addToCart`, `sortBy`, `fillForm`, `getItemPrice`). Specs read as user actions, and a UI change touches one Page Object instead of every test.
+- **`data-test` selectors as the primary strategy.** SauceDemo exposes `data-test` attributes specifically for automation, and every locator selects on those rather than CSS classes or visible text. The suite stays stable against styling and copy changes — locators break only when behaviour actually changes.
+- **Authenticated fixture.** `auth.fixture.ts` provides an `authenticatedPage` that is already logged in, so the inventory and checkout specs don't repeat the login steps. Tests that *are* about login use a plain page instead.
+- **Scoped lookups for per-item assertions.** `InventoryPage.addToCart(name)` filters the item list to a single product before acting, and `CheckoutPage.getItemPrice(name)` / `getItemDescription(name)` scope to one row on the overview. Scoping to a single product is what makes the per-item price and description integrity checks reliable.
+- **Test data separated from logic.** Accounts and product data live in `test-data/`, so the same specs can run against different data without editing test code.
 
 ---
 
 ## CI
 
-The suite runs automatically on push via GitHub Actions (see `.github/workflows/`). <!-- CONFIRM: add a sentence on what the workflow does — e.g. installs deps, installs browsers, runs the suite headless on every push to master. -->
+A GitHub Actions workflow (`.github/workflows/playwright.yml`) runs the full suite on every push and pull request to `main`/`master`. It installs dependencies with `npm ci`, installs the Playwright browsers, runs the tests on `ubuntu-latest`, and uploads the HTML report as an artifact.
